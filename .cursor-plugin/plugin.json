@@ -1,7 +1,7 @@
 {
   "name": "personal-data-for-garmin-connect",
   "displayName": "Personal Data for Garmin Connect (community)",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Community plugin, not made or endorsed by Garmin. Read-only MCP tools for your own Garmin Connect data (sleep, HRV, resting HR, Body Battery, stress, daily summaries, activities, original .FIT files) using your own Garmin Connect Personal API key.",
   "author": {
     "name": "Emil Niclas Hofseth",
@@ -27,7 +27,7 @@
       "GARMIN_PERSONAL_API_KEY": {
         "type": "string",
         "title": "Garmin Connect Personal API key",
-        "description": "Your own key from https://connect.garmin.com/app/settings/personalApiToken (shown once when created). Expires after the period you chose (30 days to 1 year); paste a new key here to renew."
+        "description": "Your own key from https://connect.garmin.com/app/settings/personalApiToken (shown once when created). Expires after the period you chose (30 days to 1 year); paste a new key here to renew. Other MCP clients: set GARMIN_PERSONAL_API_KEY or GARMIN_PERSONAL_API_KEY_FILE (see README)."
       }
     },
     "required": [

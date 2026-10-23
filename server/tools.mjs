@@ -121,7 +121,14 @@ function scrub(o) {   // drop account/profile identifiers from raw payloads
 
 // ---------- fetchers
 async function sleepRange(c, start, end) {
-  const out = [];
+  const out = [  {
+    name: "auth_status", title: "Key status",
+    description: "Checks the Garmin Personal API key: whether it is configured (and from where: GARMIN_PERSONAL_API_KEY or GARMIN_PERSONAL_API_KEY_FILE) and, with check=true (default), whether Garmin accepts it right now (one token exchange) and when the current access token expires. Garmin's API does not expose the key's own expiry date, so that is reported as null with where to look. Never returns the key or the token.",
+    inputSchema: { type: "object", properties: { check: { type: "boolean", default: true, description: "Do one token exchange to confirm Garmin accepts the key (default true). false = only report local configuration." } }, additionalProperties: false },
+    annotations: RO,
+    async run(c, a) { return { data_source: SOURCE, ...(await c.status({ check: a.check !== false })) }; },
+  },
+];
   for (const [s, e] of chunks(start, end, LIMITS.sleep)) {
     const r = await c.get("/sleep-service/sleep/dailySleepSummariesByDate", { startDate: s, endDate: e });
     out.push(...(Array.isArray(r) ? r : r?.dailySleepSummaries || []));
@@ -129,12 +136,26 @@ async function sleepRange(c, start, end) {
   return out.filter((x) => x.calendarDate >= start && x.calendarDate <= end);
 }
 async function hrvRange(c, start, end) {
-  const out = [];
+  const out = [  {
+    name: "auth_status", title: "Key status",
+    description: "Checks the Garmin Personal API key: whether it is configured (and from where: GARMIN_PERSONAL_API_KEY or GARMIN_PERSONAL_API_KEY_FILE) and, with check=true (default), whether Garmin accepts it right now (one token exchange) and when the current access token expires. Garmin's API does not expose the key's own expiry date, so that is reported as null with where to look. Never returns the key or the token.",
+    inputSchema: { type: "object", properties: { check: { type: "boolean", default: true, description: "Do one token exchange to confirm Garmin accepts the key (default true). false = only report local configuration." } }, additionalProperties: false },
+    annotations: RO,
+    async run(c, a) { return { data_source: SOURCE, ...(await c.status({ check: a.check !== false })) }; },
+  },
+];
   for (const [s, e] of chunks(start, end, LIMITS.hrv)) out.push(...((await c.get(`/hrv-service/hrv/daily/${s}/${e}`))?.hrvSummaries || []));
   return out;
 }
 async function dailyRange(c, start, end) {
-  const out = [];
+  const out = [  {
+    name: "auth_status", title: "Key status",
+    description: "Checks the Garmin Personal API key: whether it is configured (and from where: GARMIN_PERSONAL_API_KEY or GARMIN_PERSONAL_API_KEY_FILE) and, with check=true (default), whether Garmin accepts it right now (one token exchange) and when the current access token expires. Garmin's API does not expose the key's own expiry date, so that is reported as null with where to look. Never returns the key or the token.",
+    inputSchema: { type: "object", properties: { check: { type: "boolean", default: true, description: "Do one token exchange to confirm Garmin accepts the key (default true). false = only report local configuration." } }, additionalProperties: false },
+    annotations: RO,
+    async run(c, a) { return { data_source: SOURCE, ...(await c.status({ check: a.check !== false })) }; },
+  },
+];
   for (const [s, e] of chunks(start, end, LIMITS.daily)) {
     const r = await c.get("/usersummary-service/v2/dailysummaries", { startDate: s, endDate: e });
     out.push(...(Array.isArray(r) ? r : r?.data || []));
@@ -142,7 +163,14 @@ async function dailyRange(c, start, end) {
   return out;
 }
 async function activityList(c, { start, end }, { type, limit }) {
-  const out = [];
+  const out = [  {
+    name: "auth_status", title: "Key status",
+    description: "Checks the Garmin Personal API key: whether it is configured (and from where: GARMIN_PERSONAL_API_KEY or GARMIN_PERSONAL_API_KEY_FILE) and, with check=true (default), whether Garmin accepts it right now (one token exchange) and when the current access token expires. Garmin's API does not expose the key's own expiry date, so that is reported as null with where to look. Never returns the key or the token.",
+    inputSchema: { type: "object", properties: { check: { type: "boolean", default: true, description: "Do one token exchange to confirm Garmin accepts the key (default true). false = only report local configuration." } }, additionalProperties: false },
+    annotations: RO,
+    async run(c, a) { return { data_source: SOURCE, ...(await c.status({ check: a.check !== false })) }; },
+  },
+];
   for (let offset = 0; out.length < limit; offset += 100) {
     const page = await c.get("/activitylist-service/activities/search/activities",
       { start: offset, limit: Math.min(100, limit - out.length), startDate: start, endDate: end, activityType: type });
@@ -240,19 +268,19 @@ export const TOOLS = [
   },
   {
     name: "download_activity_file", title: "Download original activity file (.FIT)",
-    description: "Downloads the original file Garmin stored for an activity (usually a .zip containing the .FIT) and saves it on this computer. Reads from Garmin only; writes one local file and returns its path.",
+    description: "Downloads the original file Garmin stored for an activity (usually a .zip containing the .FIT) and saves it on the computer running this server. Reads from Garmin only; writes one local file and returns its path. Pass output_dir (absolute) so the file lands somewhere the user keeps; the default is a temp folder.",
     inputSchema: {
       type: "object", additionalProperties: false, required: ["activity_id"],
       properties: {
         activity_id: { type: ["integer", "string"], description: "Garmin activity id (from list_activities)." },
-        output_dir: { type: "string", description: "Absolute directory to save into. Default: <system temp>/garmin-personal-data/fit." },
+        output_dir: { type: "string", description: "Recommended: an absolute directory the user can find again (e.g. ~/Downloads/garmin-fit or a project data folder). Default: <system temp>/garmin-personal-data/fit, which the OS may clear." },
       },
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     async run(c, a) {
       const id = String(a.activity_id ?? "");
       if (!/^\d{1,20}$/.test(id)) throw new GarminError("activity_id must be a number", 0);
-      const dir = a.output_dir ? path.resolve(a.output_dir) : path.join(os.tmpdir(), "garmin-personal-data", "fit");
+      const dir = a.output_dir ? path.resolve(a.output_dir.replace(/^~(?=$|[\\/])/, os.homedir())) : path.join(os.tmpdir(), "garmin-personal-data", "fit");
       const { bytes, contentType } = await c.get(`/download-service/files/activity/${id}`, {}, { raw: true });
       if (!bytes?.length) throw new GarminError("Garmin returned an empty file for this activity (manual activities have no file).", 204);
       const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
@@ -260,7 +288,15 @@ export const TOOLS = [
       const file = path.join(dir, `${id}${isZip ? ".zip" : isFit ? ".fit" : ".bin"}`);
       await mkdir(dir, { recursive: true });
       await writeFile(file, bytes);
-      return { data_source: SOURCE, activity_id: Number(id), path: file, bytes: bytes.length, format: isZip ? "zip (contains the original .FIT)" : isFit ? "fit" : contentType || "unknown" };
+      return { data_source: SOURCE, activity_id: Number(id), path: file, bytes: bytes.length, format: isZip ? "zip (contains the original .FIT)" : isFit ? "fit" : contentType || "unknown",
+        ...(a.output_dir ? {} : { note: "Saved to a temp folder that the OS may clear. Pass output_dir to keep it somewhere permanent." }) };
     },
+  },
+  {
+    name: "auth_status", title: "Key status",
+    description: "Checks the Garmin Personal API key: whether it is configured (and from where: GARMIN_PERSONAL_API_KEY or GARMIN_PERSONAL_API_KEY_FILE) and, with check=true (default), whether Garmin accepts it right now (one token exchange) and when the current access token expires. Garmin's API does not expose the key's own expiry date, so that is reported as null with where to look. Never returns the key or the token.",
+    inputSchema: { type: "object", properties: { check: { type: "boolean", default: true, description: "Do one token exchange to confirm Garmin accepts the key (default true). false = only report local configuration." } }, additionalProperties: false },
+    annotations: RO,
+    async run(c, a) { return { data_source: SOURCE, ...(await c.status({ check: a.check !== false })) }; },
   },
 ];

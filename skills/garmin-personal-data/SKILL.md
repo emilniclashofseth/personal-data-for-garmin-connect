@@ -21,7 +21,8 @@ Data shapes the tools return (all carry `data_source: "Garmin"`):
 | Steps, calories, intensity minutes, "how was my day" | `get_daily_summaries` |
 | What did I do / workouts in a period | `list_activities` |
 | One workout in detail | `get_activity` (id from `list_activities`) |
-| The original file for analysis tools | `download_activity_file` |
+| The original file for analysis tools | `download_activity_file` (pass an absolute `output_dir` the user keeps; default is a temp folder) |
+| Is my key working / when does it expire? | `auth_status` |
 
 ## Rules
 - Dates are `YYYY-MM-DD`. A night of sleep is labelled by the morning it ends. Times are the user's local wall time.
@@ -29,4 +30,5 @@ Data shapes the tools return (all carry `data_source: "Garmin"`):
 - Never invent or estimate values. A `null` means Garmin has no value for that day.
 - When you show Garmin data in a chart, table or summary, say it comes from Garmin (e.g. "Source: Garmin").
 - Not available from this API: Training Readiness, Training Status, Sleep Coach, workouts/courses upload, editing activities. Say so instead of guessing.
-- If a tool says the key is missing, expired or rejected, tell the user to create a key at https://connect.garmin.com/app/settings/personalApiToken and paste it into the plugin's `GARMIN_PERSONAL_API_KEY` setting. Never ask the user to paste the key into chat.
+- If a tool says the key is missing, expired or rejected, tell the user to create a key at https://connect.garmin.com/app/settings/personalApiToken and give it to this server the way their MCP client does it: the `GARMIN_PERSONAL_API_KEY` setting or env var (in Cursor: Plugins → this plugin → Configure), or a key file named by `GARMIN_PERSONAL_API_KEY_FILE`; then restart or reload the server. Confirm with `auth_status`. Never ask the user to paste the key into chat.
+- `auth_status` cannot see the key's own expiry date (Garmin's API doesn't expose it). Don't guess one: point to the settings page above, or use the date the user noted when they created the key.

@@ -1,6 +1,6 @@
 {
   "name": "personal-data-for-garmin-connect",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Community MCP server + Cursor plugin for your own Garmin Connect Personal API data (read-only). Not made or endorsed by Garmin.",
   "type": "module",
   "private": true,
@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "node server/index.mjs",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.mjs",
     "test:live": "GARMIN_LIVE=1 node --test test/live.test.mjs"
   },
   "repository": {

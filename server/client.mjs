@@ -1,25 +1,50 @@
 // Garmin Connect Personal API client: key -> 24 h access token, GET with retry, date chunking.
 // Community code, not made or endorsed by Garmin. Never logs the API key or the access token.
+import { readFileSync } from "node:fs";
 
 export const BASE = "https://personal.connectapi.garmin.com";
 const TOKEN_PATH = "/personalapitoken-service/personal-api/personal-api-key/token";
 const JWT_RE = /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*/g;
 
+export const KEY_PAGE = "https://connect.garmin.com/app/settings/personalApiToken";
 export const SETUP_HELP =
-  "No Garmin Personal API key is configured. Create one at https://connect.garmin.com/app/settings/personalApiToken " +
-  "(Garmin's steps: https://developer.garmin.com/gc-developer-program/personal/personal-api/), then paste it into this " +
-  "plugin's GARMIN_PERSONAL_API_KEY setting (Cursor: Plugins -> Personal Data for Garmin Connect (community) -> Configure) and reload.";
+  "No Garmin Personal API key is configured. Create one at " + KEY_PAGE + " " +
+  "(Garmin's steps: https://developer.garmin.com/gc-developer-program/personal/personal-api/), then give it to this " +
+  "MCP server through your MCP client's settings for it: either GARMIN_PERSONAL_API_KEY=<key>, or " +
+  "GARMIN_PERSONAL_API_KEY_FILE=<absolute path to a file that holds only the key>. Restart or reload the server " +
+  "afterwards (for example in Cursor: Plugins -> Personal Data for Garmin Connect (community) -> Configure, then reload " +
+  "the window). Never paste the key into chat.";
+export const RENEW_HELP =
+  "Create a new key at " + KEY_PAGE + ", put it where this server reads it (GARMIN_PERSONAL_API_KEY in your MCP " +
+  "client's settings, or the file named by GARMIN_PERSONAL_API_KEY_FILE), then restart or reload the server.";
 
 export class GarminError extends Error {
   constructor(message, status) { super(message); this.status = status; }
 }
 
-export function readKey(env = process.env) {
-  const k = (env.GARMIN_PERSONAL_API_KEY || "").trim();
-  // An unexpanded placeholder means the client did not substitute the plugin variable.
-  if (!k || /^\$\{.*\}$/.test(k)) return null;
-  return k;
+// An unexpanded placeholder (e.g. "${GARMIN_PERSONAL_API_KEY}") means the client did not substitute the variable.
+const unset = (v) => { const s = String(v ?? "").trim(); return !s || /^\$\{.*\}$/.test(s) ? null : s; };
+
+/**
+ * Where the key comes from. GARMIN_PERSONAL_API_KEY wins if it is set; otherwise GARMIN_PERSONAL_API_KEY_FILE names a
+ * file whose first non-empty line is the key (keeps the key out of MCP client configs). Never throws.
+ * Returns { key, source: "env" | "file" | null, file, error }.
+ */
+export function keyInfo(env = process.env) {
+  const direct = unset(env.GARMIN_PERSONAL_API_KEY);
+  if (direct) return { key: direct, source: "env", file: null, error: null };
+  const file = unset(env.GARMIN_PERSONAL_API_KEY_FILE);
+  if (!file) return { key: null, source: null, file: null, error: null };
+  try {
+    const line = readFileSync(file, "utf8").split(/\r?\n/).map((l) => l.trim()).find((l) => l && !l.startsWith("#"));
+    return line ? { key: line, source: "file", file, error: null }
+      : { key: null, source: "file", file, error: `GARMIN_PERSONAL_API_KEY_FILE (${file}) is empty.` };
+  } catch (e) {
+    return { key: null, source: "file", file, error: `GARMIN_PERSONAL_API_KEY_FILE (${file}) could not be read (${e.code || "error"}).` };
+  }
 }
+
+export function readKey(env = process.env) { return keyInfo(env).key; }
 
 export function jwtExp(token) {
   try {
@@ -46,14 +71,14 @@ export class Client {
   }
 
   async exchange() {
-    const key = readKey(this.env);
-    if (!key) throw new GarminError(SETUP_HELP, 0);
+    const { key, error } = keyInfo(this.env);
+    if (!key) throw new GarminError(error ? `${error} ${SETUP_HELP}` : SETUP_HELP, 0);
     this.stats.token_exchanges++;
     const res = await this.fetch(BASE + TOKEN_PATH, { method: "POST", headers: { Authorization: `ApiKey ${key}`, Accept: "*/*" } });
     const body = (await res.text()).trim();
     if (!res.ok) {
       const hint = res.status === 401 || res.status === 403
-        ? " The key was rejected: it may have expired or been deleted. Create a new key at https://connect.garmin.com/app/settings/personalApiToken and update GARMIN_PERSONAL_API_KEY."
+        ? ` The key was rejected: it may have expired or been deleted. ${RENEW_HELP}`
         : "";
       throw new GarminError(`Token exchange failed: HTTP ${res.status}.${hint} ${this.redact(body).slice(0, 200)}`.trim(), res.status);
     }
@@ -69,6 +94,35 @@ export class Client {
     const t = this.now();
     if (!this.token || t - this.obtainedAt > 23 * 3600e3 || this.expiresAt - t < 3600e3) await this.exchange();
     return this.token;
+  }
+
+  /**
+   * Key status for the auth_status tool. With check=true it does one fresh token exchange, which is the only way the
+   * Personal API tells us whether the key is accepted right now. Garmin's API does not report the key's own expiry
+   * date (only the settings page shows it), so key_expires_at is always null rather than a guess.
+   */
+  async status({ check = true } = {}) {
+    const info = keyInfo(this.env);
+    const out = {
+      key_configured: Boolean(info.key), key_source: info.source, key_file: info.file, key_problem: info.error,
+      checked: false, key_accepted: null, access_token_expires_at: null,
+      key_expires_at: null,
+      key_expiry_note: `Garmin's Personal API does not report when the key itself expires. See its status and expiry date at ${KEY_PAGE}; Garmin also emails you about a week before it expires.`,
+      next_step: null,
+    };
+    if (!info.key) { out.next_step = info.error ? `${info.error} ${SETUP_HELP}` : SETUP_HELP; return out; }
+    if (!check) return out;
+    out.checked = true;
+    try {
+      this.token = null;
+      await this.exchange();
+      out.key_accepted = true;
+      out.access_token_expires_at = new Date(this.expiresAt).toISOString();
+    } catch (e) {
+      if (e instanceof GarminError && (e.status === 401 || e.status === 403)) { out.key_accepted = false; out.next_step = RENEW_HELP; }
+      else out.check_error = this.redact(e?.message || e);
+    }
+    return out;
   }
 
   async get(path, query = {}, { raw = false } = {}) {
@@ -100,7 +154,7 @@ export class Client {
         const text = await res.text().catch(() => "");
         const why = res.status === 429 ? " Rate limited by Garmin; try again in a few minutes or use a shorter date range." :
           res.status === 400 ? " Garmin rejected the request (often a date range longer than this endpoint allows)." :
-          res.status === 401 || res.status === 403 ? " Not authorised: the key may have expired or been revoked." : "";
+          res.status === 401 || res.status === 403 ? ` Not authorised: the key may have expired or been revoked. ${RENEW_HELP}` : "";
         throw new GarminError(`GET ${path} failed: HTTP ${res.status}.${why} ${this.redact(text).slice(0, 200)}`.trim(), res.status);
       }
       if (raw) return { bytes: Buffer.from(await res.arrayBuffer()), contentType: res.headers?.get?.("content-type") || "" };

@@ -6,7 +6,7 @@ import { createInterface } from "node:readline";
 import { Client, GarminError } from "./client.mjs";
 import { TOOLS } from "./tools.mjs";
 
-export const SERVER_INFO = { name: "garmin-personal-data", title: "Personal Data for Garmin Connect (community)", version: "0.1.0" };
+export const SERVER_INFO = { name: "garmin-personal-data", title: "Personal Data for Garmin Connect (community)", version: "0.2.0" };
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
 export function makeHandler(client = new Client()) {

@@ -1,7 +1,10 @@
 // Offline tests: a fake Garmin (no network, no key needed).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Client, chunks, resolveRange, readKey, jwtExp } from "../server/client.mjs";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { Client, chunks, resolveRange, readKey, keyInfo, jwtExp } from "../server/client.mjs";
 import { makeHandler } from "../server/index.mjs";
 import { TOOLS } from "../server/tools.mjs";
 
@@ -102,4 +105,60 @@ test("MCP handshake and tools/list", async () => {
   const names = list.result.tools.map((t) => t.name);
   assert.deepEqual(names, TOOLS.map((t) => t.name));
   for (const t of list.result.tools) if (t.name !== "download_activity_file") assert.equal(t.annotations.readOnlyHint, true);
+});
+
+test("GARMIN_PERSONAL_API_KEY_FILE: key read from file; env var wins; unreadable file explained", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "gpd-test-"));
+  const f = path.join(dir, "key");
+  await writeFile(f, `# my Garmin key\n${KEY}\n`, { mode: 0o600 });
+  assert.deepEqual([keyInfo({ GARMIN_PERSONAL_API_KEY_FILE: f }).key, keyInfo({ GARMIN_PERSONAL_API_KEY_FILE: f }).source], [KEY, "file"]);
+  assert.equal(readKey({ GARMIN_PERSONAL_API_KEY: "direct", GARMIN_PERSONAL_API_KEY_FILE: f }), "direct");
+  assert.equal(readKey({ GARMIN_PERSONAL_API_KEY: "${GARMIN_PERSONAL_API_KEY}", GARMIN_PERSONAL_API_KEY_FILE: f }), KEY);
+  const empty = path.join(dir, "empty"); await writeFile(empty, "\n");
+  assert.match(keyInfo({ GARMIN_PERSONAL_API_KEY_FILE: empty }).error, /empty/);
+  // A file-based key is used for the exchange and redacted like an env key.
+  const { calls, fetchImpl } = fakeGarmin([[/sleep/, () => new Response(`bad ${KEY}`, { status: 400 })]]);
+  const h = makeHandler(new Client({ env: { GARMIN_PERSONAL_API_KEY_FILE: f }, fetchImpl, pauseMs: 0, wait: async () => {} }));
+  const r = await h({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "get_sleep", arguments: { start_date: "2026-10-01", end_date: "2026-10-01" } } });
+  assert.equal(calls[0].auth, `ApiKey ${KEY}`);
+  assert.ok(!r.result.content[0].text.includes(KEY));
+  // Missing file: setup help names the file problem, no request is made.
+  const g = fakeGarmin([]);
+  const h2 = makeHandler(new Client({ env: { GARMIN_PERSONAL_API_KEY_FILE: path.join(dir, "nope") }, fetchImpl: g.fetchImpl, pauseMs: 0 }));
+  const r2 = await h2({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "get_hrv", arguments: {} } });
+  assert.equal(r2.result.isError, true);
+  assert.match(r2.result.content[0].text, /could not be read \(ENOENT\)/);
+  assert.equal(g.calls.length, 0);
+});
+
+test("setup help is client-neutral and mentions both ways to pass the key", async () => {
+  const { SETUP_HELP } = await import("../server/client.mjs");
+  assert.match(SETUP_HELP, /GARMIN_PERSONAL_API_KEY_FILE/);
+  assert.match(SETUP_HELP, /MCP client/);
+});
+
+test("auth_status: not configured, accepted, rejected, and check=false; never leaks the key", async () => {
+  const call = async (client, args = {}) => (await makeHandler(client)({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name: "auth_status", arguments: args } })).result;
+  const none = fakeGarmin([]);
+  const r0 = await call(new Client({ env: {}, fetchImpl: none.fetchImpl, pauseMs: 0 }));
+  assert.equal(r0.isError, false);
+  assert.deepEqual([r0.structuredContent.key_configured, r0.structuredContent.key_accepted, none.calls.length], [false, null, 0]);
+  assert.match(r0.structuredContent.next_step, /personalApiToken/);
+
+  const ok = fakeGarmin([]);
+  const r1 = await call(mk(ok.fetchImpl));
+  const s1 = r1.structuredContent;
+  assert.deepEqual([s1.key_configured, s1.key_source, s1.checked, s1.key_accepted, s1.key_expires_at], [true, "env", true, true, null]);
+  assert.ok(Date.parse(s1.access_token_expires_at) > Date.now());
+  assert.match(s1.key_expiry_note, /does not report/);
+  assert.ok(!r1.content[0].text.includes(KEY) && !r1.content[0].text.includes(TOKEN));
+
+  const rej = async () => new Response("expired", { status: 403 });
+  const s2 = (await call(new Client({ env: { GARMIN_PERSONAL_API_KEY: KEY }, fetchImpl: rej, pauseMs: 0, wait: async () => {} }))).structuredContent;
+  assert.deepEqual([s2.key_configured, s2.key_accepted], [true, false]);
+  assert.match(s2.next_step, /Create a new key/);
+
+  const quiet = fakeGarmin([]);
+  const s3 = (await call(mk(quiet.fetchImpl), { check: false })).structuredContent;
+  assert.deepEqual([s3.checked, s3.key_accepted, quiet.calls.length], [false, null, 0]);
 });
