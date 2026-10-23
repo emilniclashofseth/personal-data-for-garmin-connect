@@ -20,7 +20,7 @@ export function makeHandler(client = new Client()) {
         const v = PROTOCOLS.includes(params?.protocolVersion) ? params.protocolVersion : PROTOCOLS[0];
         return ok({
           protocolVersion: v, capabilities: { tools: { listChanged: false } }, serverInfo: SERVER_INFO,
-          instructions: "Read-only access to the configured user's own Garmin Connect data via Garmin's Personal API. Community project, not affiliated with Garmin. Dates are YYYY-MM-DD; sleep is labelled by wake date.",
+          instructions: "Read-only access to the configured user's own Garmin Connect data via Garmin's Personal API. Unofficial community project, not affiliated with Garmin. General wellness information only, not medical advice: do not diagnose; refer concerning values or symptoms to a health professional. Dates are YYYY-MM-DD; sleep is labelled by wake date.",
         });
       }
       case "ping": return ok({});

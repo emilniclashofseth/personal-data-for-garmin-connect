@@ -2,7 +2,7 @@
   "name": "personal-data-for-garmin-connect",
   "displayName": "Personal Data for Garmin Connect (community)",
   "version": "0.2.0",
-  "description": "Community plugin, not made or endorsed by Garmin. Read-only MCP tools for your own Garmin Connect data (sleep, HRV, resting HR, Body Battery, stress, daily summaries, activities, original .FIT files) using your own Garmin Connect Personal API key.",
+  "description": "Unofficial community plugin, not affiliated with or endorsed by Garmin. Read-only MCP tools for your own Garmin Connect data (sleep, HRV, resting HR, Body Battery, stress, daily summaries, activities, original .FIT files) using your own Garmin Connect Personal API key. Runs locally; sends nothing to the author. General wellness information, not medical advice.",
   "author": {
     "name": "Emil Niclas Hofseth",
     "url": "https://github.com/emilniclashofseth"

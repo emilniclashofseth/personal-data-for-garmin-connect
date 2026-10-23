@@ -1,7 +1,7 @@
 {
   "name": "personal-data-for-garmin-connect",
   "version": "0.2.0",
-  "description": "Community MCP server + Cursor plugin for your own Garmin Connect Personal API data (read-only). Not made or endorsed by Garmin.",
+  "description": "Unofficial community MCP server + Cursor plugin for your own Garmin Connect Personal API data (read-only, runs locally). General wellness information, not medical advice. Not affiliated with or endorsed by Garmin.",
   "type": "module",
   "private": true,
   "license": "MIT",
