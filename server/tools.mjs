@@ -121,14 +121,7 @@ function scrub(o) {   // drop account/profile identifiers from raw payloads
 
 // ---------- fetchers
 async function sleepRange(c, start, end) {
-  const out = [  {
-    name: "auth_status", title: "Key status",
-    description: "Checks the Garmin Personal API key: whether it is configured (and from where: GARMIN_PERSONAL_API_KEY or GARMIN_PERSONAL_API_KEY_FILE) and, with check=true (default), whether Garmin accepts it right now (one token exchange) and when the current access token expires. Garmin's API does not expose the key's own expiry date, so that is reported as null with where to look. Never returns the key or the token.",
-    inputSchema: { type: "object", properties: { check: { type: "boolean", default: true, description: "Do one token exchange to confirm Garmin accepts the key (default true). false = only report local configuration." } }, additionalProperties: false },
-    annotations: RO,
-    async run(c, a) { return { data_source: SOURCE, ...(await c.status({ check: a.check !== false })) }; },
-  },
-];
+  const out = [];
   for (const [s, e] of chunks(start, end, LIMITS.sleep)) {
     const r = await c.get("/sleep-service/sleep/dailySleepSummariesByDate", { startDate: s, endDate: e });
     out.push(...(Array.isArray(r) ? r : r?.dailySleepSummaries || []));
@@ -136,26 +129,12 @@ async function sleepRange(c, start, end) {
   return out.filter((x) => x.calendarDate >= start && x.calendarDate <= end);
 }
 async function hrvRange(c, start, end) {
-  const out = [  {
-    name: "auth_status", title: "Key status",
-    description: "Checks the Garmin Personal API key: whether it is configured (and from where: GARMIN_PERSONAL_API_KEY or GARMIN_PERSONAL_API_KEY_FILE) and, with check=true (default), whether Garmin accepts it right now (one token exchange) and when the current access token expires. Garmin's API does not expose the key's own expiry date, so that is reported as null with where to look. Never returns the key or the token.",
-    inputSchema: { type: "object", properties: { check: { type: "boolean", default: true, description: "Do one token exchange to confirm Garmin accepts the key (default true). false = only report local configuration." } }, additionalProperties: false },
-    annotations: RO,
-    async run(c, a) { return { data_source: SOURCE, ...(await c.status({ check: a.check !== false })) }; },
-  },
-];
+  const out = [];
   for (const [s, e] of chunks(start, end, LIMITS.hrv)) out.push(...((await c.get(`/hrv-service/hrv/daily/${s}/${e}`))?.hrvSummaries || []));
   return out;
 }
 async function dailyRange(c, start, end) {
-  const out = [  {
-    name: "auth_status", title: "Key status",
-    description: "Checks the Garmin Personal API key: whether it is configured (and from where: GARMIN_PERSONAL_API_KEY or GARMIN_PERSONAL_API_KEY_FILE) and, with check=true (default), whether Garmin accepts it right now (one token exchange) and when the current access token expires. Garmin's API does not expose the key's own expiry date, so that is reported as null with where to look. Never returns the key or the token.",
-    inputSchema: { type: "object", properties: { check: { type: "boolean", default: true, description: "Do one token exchange to confirm Garmin accepts the key (default true). false = only report local configuration." } }, additionalProperties: false },
-    annotations: RO,
-    async run(c, a) { return { data_source: SOURCE, ...(await c.status({ check: a.check !== false })) }; },
-  },
-];
+  const out = [];
   for (const [s, e] of chunks(start, end, LIMITS.daily)) {
     const r = await c.get("/usersummary-service/v2/dailysummaries", { startDate: s, endDate: e });
     out.push(...(Array.isArray(r) ? r : r?.data || []));
@@ -163,14 +142,7 @@ async function dailyRange(c, start, end) {
   return out;
 }
 async function activityList(c, { start, end }, { type, limit }) {
-  const out = [  {
-    name: "auth_status", title: "Key status",
-    description: "Checks the Garmin Personal API key: whether it is configured (and from where: GARMIN_PERSONAL_API_KEY or GARMIN_PERSONAL_API_KEY_FILE) and, with check=true (default), whether Garmin accepts it right now (one token exchange) and when the current access token expires. Garmin's API does not expose the key's own expiry date, so that is reported as null with where to look. Never returns the key or the token.",
-    inputSchema: { type: "object", properties: { check: { type: "boolean", default: true, description: "Do one token exchange to confirm Garmin accepts the key (default true). false = only report local configuration." } }, additionalProperties: false },
-    annotations: RO,
-    async run(c, a) { return { data_source: SOURCE, ...(await c.status({ check: a.check !== false })) }; },
-  },
-];
+  const out = [];
   for (let offset = 0; out.length < limit; offset += 100) {
     const page = await c.get("/activitylist-service/activities/search/activities",
       { start: offset, limit: Math.min(100, limit - out.length), startDate: start, endDate: end, activityType: type });
