@@ -1,11 +1,12 @@
 # Personal Data for Garmin Connect (community)
 
-**A personal, community-built plugin. It is not made, endorsed, or supported by Garmin.**
+**An unofficial, community-built plugin. It is not affiliated with, endorsed or sponsored by Garmin Ltd. or its subsidiaries.**
+For general wellness and informational use only. It is not a medical device and not medical advice (see [Disclaimer](#disclaimer)).
 It reads **only your own data**, using a Garmin Connect Personal API key that you create for your own account.
 It is read-only: it cannot change anything in Garmin Connect or on your devices.
 
 Garmin and Garmin Connect are trademarks of Garmin Ltd. or its subsidiaries. They are used here only to say which
-service the plugin works with.
+service the plugin is compatible with. No Garmin logos are used.
 
 It is a small stdio MCP server (Node.js 18+, **no dependencies, no install step**) packaged as a Cursor plugin, plus one
 skill that tells the agent when to use the tools. It works with any MCP client that can launch a local stdio server
@@ -121,8 +122,10 @@ Client config: `{"command": "/absolute/path/to/run-garmin.sh", "args": []}`. Mak
   is sent only to Garmin (`personal.connectapi.garmin.com`), to get the access token.
 - The access token stays in memory. Nothing is written to disk except files you ask `download_activity_file` to save.
 - Errors are redacted. The key and the token are never logged or returned.
-- No telemetry, no third-party servers. Your data goes from Garmin to your machine and to the AI model you use in your
-  client. Check that you are comfortable sharing health data with that model.
+- No telemetry, no third-party servers, no server run by the author. The code sends requests only to Garmin. Your data goes
+  from Garmin to the computer running the server and then to your MCP client and the AI model you use there, under
+  those providers' terms. Check that you are comfortable sharing health data with that model.
+- The author of this plugin does not receive, store or have access to your key or your data.
 - Garmin's Personal API is for **personal use of your own data**. Do not use this plugin to run a service for other
   people, and do not share your key.
 
@@ -150,5 +153,20 @@ GARMIN_PERSONAL_API_KEY_FILE=/path/to/key npm run test:live   # a few real read-
 No dependencies, no install step (`npm ci` works with the empty lockfile but isn't needed). The code: `server/client.mjs` (token exchange, retries, date chunking), `server/tools.mjs` (tools and
 output shapes), `server/index.mjs` (MCP stdio JSON-RPC).
 
+## Disclaimer
+- **Not medical advice.** This plugin retrieves data you already have in Garmin Connect, for general wellness and
+  informational purposes only. It is not a medical device and is not intended to diagnose, treat, cure, monitor or
+  prevent any disease or condition. Values come from consumer devices, may be missing or inaccurate, and are passed on
+  as Garmin reports them. Don't make medical decisions based on them; ask a doctor or other qualified health
+  professional about any health concern. Any interpretation an AI assistant adds is the assistant's, not this plugin's.
+- **Your data.** The plugin runs on the computer where you start it and talks only to Garmin, using your own key. It
+  has no telemetry and no server of its own, and the author does not receive, store or have access to your key or your
+  data. Your MCP client and AI model provider handle the data under their own terms, which you choose.
+- **Unofficial.** Community project, not affiliated with, endorsed or sponsored by Garmin Ltd. or its subsidiaries.
+  Garmin and Garmin Connect are trademarks of Garmin Ltd. or its subsidiaries, used only to say what the plugin is
+  compatible with.
+- **Provided as is, use at your own risk.** No warranty of any kind (see `LICENSE`). You are responsible for following
+  Garmin's terms, including the Personal API terms you accept when you create a key, and for your own data.
+
 ## License
-MIT. See `LICENSE`. Not affiliated with Garmin.
+MIT (provided "as is", without warranty). See `LICENSE`. Not affiliated with Garmin.

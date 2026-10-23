@@ -1,6 +1,6 @@
 ---
 name: garmin-personal-data
-description: Use when the user asks about their own Garmin data, such as sleep, HRV, resting heart rate, Body Battery, stress, steps or daily summaries, or about Garmin activities (runs, rides, swims, strength), training load, or wants an activity's original .FIT file. Calls the read-only tools of the garmin-personal-data MCP server (community plugin, not made by Garmin).
+description: Use when the user asks about their own Garmin data, such as sleep, HRV, resting heart rate, Body Battery, stress, steps or daily summaries, or about Garmin activities (runs, rides, swims, strength), training load, or wants an activity's original .FIT file. Calls the read-only tools of the garmin-personal-data MCP server (unofficial community plugin, not affiliated with Garmin).
 ---
 
 # Your Garmin Connect data (community plugin)
@@ -27,6 +27,7 @@ Data shapes the tools return (all carry `data_source: "Garmin"`):
 ## Rules
 - Dates are `YYYY-MM-DD`. A night of sleep is labelled by the morning it ends. Times are the user's local wall time.
 - Fetch the smallest range that answers the question (default is the last 7 days; activities 30). Ranges up to a year are split automatically, but they take longer.
+- General wellness information only, not medical advice. Report what Garmin recorded; don't diagnose, name conditions, or suggest treatment or medication. When you interpret health values or trends (HRV, resting HR, SpO2, respiration, stress, sleep), add a short note that this is not medical advice. If values look concerning or the user mentions symptoms, suggest they talk to a doctor or other qualified health professional (for an emergency, local emergency services).
 - Never invent or estimate values. A `null` means Garmin has no value for that day.
 - When you show Garmin data in a chart, table or summary, say it comes from Garmin (e.g. "Source: Garmin").
 - Not available from this API: Training Readiness, Training Status, Sleep Coach, workouts/courses upload, editing activities. Say so instead of guessing.
