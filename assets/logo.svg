@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Personal health data">
+  <rect width="64" height="64" rx="14" fill="#1f2a37"/>
+  <path d="M8 36h12l5-12 7 22 6-16 4 6h14" fill="none" stroke="#5eead4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

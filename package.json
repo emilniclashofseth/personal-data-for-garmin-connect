@@ -1,0 +1,24 @@
+{
+  "name": "personal-data-for-garmin-connect",
+  "version": "0.1.0",
+  "description": "Community MCP server + Cursor plugin for your own Garmin Connect Personal API data (read-only). Not made or endorsed by Garmin.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "garmin-personal-data-mcp": "server/index.mjs"
+  },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "test": "node --test test/",
+    "test:live": "GARMIN_LIVE=1 node --test test/live.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emilniclashofseth/personal-data-for-garmin-connect.git"
+  },
+  "author": "Emil Niclas Hofseth"
+}
