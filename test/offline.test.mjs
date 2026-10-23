@@ -162,3 +162,32 @@ test("auth_status: not configured, accepted, rejected, and check=false; never le
   const s3 = (await call(mk(quiet.fetchImpl), { check: false })).structuredContent;
   assert.deepEqual([s3.checked, s3.key_accepted, quiet.calls.length], [false, null, 0]);
 });
+
+test("range and list tools return only data entries (no stray tool objects)", async () => {
+  const day = (d) => ({ calendarDate: d });
+  const { fetchImpl } = fakeGarmin([
+    [/dailySleepSummariesByDate/, () => json([{ ...day("2026-10-01"), sleepTimeSeconds: 28800 }, { ...day("2026-10-02"), sleepTimeSeconds: 25200 }])],
+    [/hrv-service/, () => json({ hrvSummaries: [{ ...day("2026-10-01"), lastNightAvg: 50 }, { ...day("2026-10-02"), lastNightAvg: 60 }] })],
+    [/dailysummaries/, () => json({ data: [{ ...day("2026-10-01"), movement: { steps: { value: 10000 } } }, { ...day("2026-10-02"), movement: { steps: { value: 5000 } } }] })],
+    [/activitylist-service/, (u) => json([{ activityId: 100, activityName: "Run", startTimeLocal: "2026-10-02T08:00:00" }, { activityId: 200, activityName: "Ride", startTimeLocal: "2026-10-01T08:00:00" }].slice(0, Number(u.searchParams.get("limit"))))],
+  ]);
+  const h = makeHandler(mk(fetchImpl));
+  const args = { start_date: "2026-10-01", end_date: "2026-10-02" };
+  const call = async (name, extra = {}) => (await h({ jsonrpc: "2.0", id: 10, method: "tools/call", params: { name, arguments: { ...args, ...extra } } })).result;
+  for (const name of ["get_sleep", "get_hrv", "get_daily_summaries", "get_resting_heart_rate", "get_body_battery", "get_stress"]) {
+    for (const raw of ["get_sleep", "get_hrv", "get_daily_summaries"].includes(name) ? [false, true] : [false]) {
+      const r = await call(name, raw ? { raw } : {});
+      assert.equal(r.isError, false, `${name} raw=${raw}: ${r.content[0].text}`);
+      const sc = r.structuredContent;
+      assert.equal(sc.count, 2, `${name} raw=${raw} count`);
+      const dates = sc.items.map((x) => x.date ?? x.calendarDate);
+      assert.deepEqual(dates, ["2026-10-01", "2026-10-02"], `${name} raw=${raw} dates`);
+      assert.ok(!JSON.stringify(sc.items).includes("auth_status"), `${name} raw=${raw} has a stray tool object`);
+    }
+  }
+  const acts = (await call("list_activities", { limit: 2 })).structuredContent;
+  assert.deepEqual([acts.count, acts.items.map((a) => a.activity_id)], [2, [100, 200]]);
+  const rawActs = (await call("list_activities", { limit: 2, raw: true })).structuredContent;
+  assert.deepEqual(rawActs.items.map((a) => a.activityId), [100, 200]);
+  assert.ok(!JSON.stringify(rawActs.items).includes("auth_status"));
+});
